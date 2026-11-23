@@ -118,7 +118,7 @@ Transform:
   m_GameObject: {fileID: 4555465085832614072}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9, y: -6, z: 0}
+  m_LocalPosition: {x: 9, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -183,23 +183,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d743d0890d080d84cbf2717b4e428a9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PortalNextLevel
-  teleportDelay: 0.03
-  slashCutSFX: {fileID: 8300000, guid: fc4a585deb93e0f4cb03f1016ce2fd22, type: 3}
-  portalEnterSFX: {fileID: 8300000, guid: cb8cdd2c56f5c2440a92a295bf525259, type: 3}
-  chainSnapSFX: {fileID: 8300000, guid: af8269b9d5ed14b46bbf79d1c7b10fef, type: 3}
-  portalSFXVolume: 1
-  useMonochromeSpaceTear: 1
-  animateSpawnScale: 1
-  spawnAnimationDuration: 0.28
-  animateIdlePulse: 1
-  idlePulseSpeed: 3.5
-  idlePulseAmount: 0.045
-  targetJitterStrength: 0.04
-  virtualPixelHeight: 180
-  zoomPunchDuration: 0.22
-  zoomInOrthoSize: 2.6
-  katanaCutDuration: 0.09
-  screenSplitDuration: 0.3
-  blackScreenHoldDuration: 0.06
-  nextStageFadeOutDuration: 0.24
-  modeExitGracePeriod: 0.35
+  Name: Entity
+  positionX: 0
+  positionY: 0
+  isInteractable: 1
+  isOneTimeUse: 1
+  interactRange: 2
+  autoInteract: 0
+  destination: {fileID: 0}
+  isTeleported: 0

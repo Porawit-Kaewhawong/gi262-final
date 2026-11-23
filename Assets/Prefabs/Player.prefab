@@ -28,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 1550900086493862807}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -11, y: -2.4, z: 0}
+  m_LocalPosition: {x: 0, y: -3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -79,7 +79,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1.5}
+  m_Size: {x: 1, y: 1.9}
   m_EdgeRadius: 0
 --- !u!50 &2007700832053156688
 Rigidbody2D:
@@ -141,7 +141,7 @@ MonoBehaviour:
   checkPointPos: {x: -11, y: -2.4}
   isInCombat: 0
   respawnTime: 2
-  jumpForce: 14.5
+  jumpForce: 17.5
   attackDamage: 25
   shurikenSpeed: 16
   shurikenCooldown: 0.25
@@ -179,8 +179,8 @@ Transform:
   m_GameObject: {fileID: 4496612795861590852}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.1, y: 0, z: 0}
-  m_LocalScale: {x: 5, y: 5, z: 5}
+  m_LocalPosition: {x: -0.15, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 5018203374083801996}
