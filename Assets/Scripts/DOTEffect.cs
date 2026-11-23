@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Damage Over Time (or Heal Over Time) status effect applied to a Character.
-/// </summary>
 [Serializable]
 public class DOTEffect : StatusEffect
 {
@@ -34,7 +31,10 @@ public class DOTEffect : StatusEffect
     public override void OnUpdate(Character character)
     {
         base.OnUpdate(character);
-        if (character == null || character.isDead) return;
+        if (character == null || character.isDead)
+        {
+            return;
+        }
 
         tickTimer += Time.deltaTime;
         if (tickTimer >= tickInterval)

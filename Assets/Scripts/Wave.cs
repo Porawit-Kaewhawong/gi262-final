@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 
-/// <summary>
-/// Represents a single wave of enemies managed by WaveManager.
-/// </summary>
 [Serializable]
 public class Wave
 {
@@ -13,7 +10,10 @@ public class Wave
 
     public int getTotalEnemyCount()
     {
-        if (spawnEntries == null) return 0;
+        if (spawnEntries == null)
+        {
+            return 0;
+        }
 
         int total = 0;
         for (int i = 0; i < spawnEntries.Count; i++)

@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Data model representing an item sold in the ShopUI.
-/// </summary>
 [Serializable]
 public class ShopItem
 {

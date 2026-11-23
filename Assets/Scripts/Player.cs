@@ -1,14 +1,9 @@
 using System.Collections;
 using TMPro;
-using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Player Ninja character that moves in 2D, throws shurikens in front of them,
-/// collects Coins/XP, levels up, interacts with world objects, and respawns at Checkpoints.
-/// Inherits from Character.
-/// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class Player : Character
 {
@@ -20,6 +15,7 @@ public class Player : Character
     public float currentXP = 0f;
     public float nextLevelXP = 50f;
     public float levelMultiplierXP = 1.5f;
+    public float defaultXpGain = 25f;
     public int totalKills = 0;
     public bool hasKilledMonster = false;
 
@@ -41,16 +37,19 @@ public class Player : Character
     public bool enableStunShuriken = false;
 
     [Header("Currency UI References")]
-    [SerializeField] private TextMeshProUGUI coinCurrencyText = null;
-    [SerializeField] private TextMeshProUGUI levelCurrencyText = null;
+    public TextMeshProUGUI coinCurrencyText;
+    public TextMeshProUGUI levelCurrencyText;
 
     private int facingDirection = 1;
-    private float moveInputX = 0f;
+    private Vector2 inputValue;
     private bool canDoubleJump = false;
     private float lastThrowTime = -10f;
     private float lastCombatTime = -10f;
-    private float defaultXpGain = 25f;
     private Coroutine respawnCoroutine;
+
+    private InputAction moveAction;
+    private InputAction jumpAction;
+    private InputAction attackAction;
 
     protected override void Awake()
     {
@@ -61,43 +60,22 @@ public class Player : Character
         }
         Instance = this;
 
-        if (string.IsNullOrWhiteSpace(Name) || Name == "Entity")
-        {
-            Name = "Ninja";
-        }
-        if (maxHealth <= 0f) maxHealth = 100f;
-        if (moveSpeed <= 0.1f) moveSpeed = 7.5f;
-
         base.Awake();
-
-        if (rb != null)
-        {
-            rb.gravityScale = 2.5f;
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-
-        Canvas[] childCanvases = GetComponentsInChildren<Canvas>(true);
-        for (int i = 0; i < childCanvases.Length; i++)
-        {
-            if (childCanvases[i] != null)
-            {
-                childCanvases[i].gameObject.SetActive(false);
-            }
-        }
-
-        LineRenderer lr = GetComponent<LineRenderer>();
-        if (lr != null) lr.enabled = false;
-        SpringJoint2D sj = GetComponent<SpringJoint2D>();
-        if (sj != null) sj.enabled = false;
-
         checkPointPos = transform.position;
+
+        moveAction = InputSystem.actions.FindAction("Move");
+        jumpAction = InputSystem.actions.FindAction("Jump");
+        attackAction = InputSystem.actions.FindAction("Attack");
     }
 
     private void Start()
     {
-        SnapToInitialSpawnPoint();
-        BindCameraToPlayer();
-        BindCurrencyUI();
+        if (WaveManager.Instance != null && WaveManager.Instance.playerSpawnPoint != null)
+        {
+            transform.position = WaveManager.Instance.playerSpawnPoint.position;
+            checkPointPos = transform.position;
+        }
+
         UpdateCurrencyUI();
     }
 
@@ -122,7 +100,10 @@ public class Player : Character
 
         if (isDead)
         {
-            if (rb != null) rb.linearVelocity = Vector2.zero;
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+            }
             return;
         }
 
@@ -134,7 +115,10 @@ public class Player : Character
 
         if (isStunned)
         {
-            if (rb != null) rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            }
             return;
         }
 
@@ -143,76 +127,42 @@ public class Player : Character
 
     private void FixedUpdate()
     {
-        if (isDead || isStunned) return;
+        if (isDead || isStunned)
+        {
+            return;
+        }
+
+        if (moveAction != null)
+        {
+            inputValue = moveAction.ReadValue<Vector2>();
+        }
         Move();
     }
 
     private void ReadPlayerInput()
     {
-        moveInputX = 0f;
-        bool jumpPressed = false;
-        bool throwPressed = false;
-
-        if (Keyboard.current != null)
+        if (moveAction != null)
         {
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) moveInputX -= 1f;
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) moveInputX += 1f;
+            inputValue = moveAction.ReadValue<Vector2>();
+            if (inputValue.x != 0f)
+            {
+                if (inputValue.x > 0f)
+                {
+                    facingDirection = 1;
+                }
+                else
+                {
+                    facingDirection = -1;
+                }
 
-            if (Keyboard.current.spaceKey.wasPressedThisFrame ||
-                Keyboard.current.wKey.wasPressedThisFrame ||
-                Keyboard.current.upArrowKey.wasPressedThisFrame)
-            {
-                jumpPressed = true;
-            }
-
-            if (Keyboard.current.jKey.wasPressedThisFrame ||
-                Keyboard.current.kKey.wasPressedThisFrame ||
-                Keyboard.current.fKey.wasPressedThisFrame)
-            {
-                throwPressed = true;
-            }
-
-            if (Keyboard.current.digit1Key.wasPressedThisFrame)
-            {
-                ApplyStatusEffect(new StatEffect("Speed Boost", 5f, 1.4f, false));
-            }
-            if (Keyboard.current.digit2Key.wasPressedThisFrame)
-            {
-                ApplyStatusEffect(new DOTEffect("Poison DOT", 4f, 5f, 1f, true));
-            }
-            if (Keyboard.current.digit3Key.wasPressedThisFrame)
-            {
-                ApplyStatusEffect(new StunEffect("Stun", 1.2f));
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.flipX = facingDirection < 0;
+                }
             }
         }
 
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-        {
-            if (UnityEngine.EventSystems.EventSystem.current == null ||
-                !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
-            {
-                throwPressed = true;
-            }
-        }
-
-        if (Gamepad.current != null)
-        {
-            float stickX = Gamepad.current.leftStick.x.ReadValue();
-            if (Mathf.Abs(stickX) > 0.15f) moveInputX = Mathf.Sign(stickX);
-            if (Gamepad.current.buttonSouth.wasPressedThisFrame) jumpPressed = true;
-            if (Gamepad.current.buttonWest.wasPressedThisFrame || Gamepad.current.rightTrigger.wasPressedThisFrame) throwPressed = true;
-        }
-
-        if (Mathf.Abs(moveInputX) > 0.05f)
-        {
-            facingDirection = moveInputX > 0f ? 1 : -1;
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.flipX = facingDirection < 0;
-            }
-        }
-
-        if (jumpPressed && rb != null)
+        if (jumpAction != null && jumpAction.WasPressedThisFrame() && rb != null)
         {
             if (isGrounded)
             {
@@ -226,85 +176,72 @@ public class Player : Character
             }
         }
 
-        if (throwPressed && Time.time >= lastThrowTime + shurikenCooldown)
+        if (attackAction != null && attackAction.WasPressedThisFrame() && Time.time >= lastThrowTime + shurikenCooldown)
         {
-            ThrowShurikenInFront();
+            if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+            {
+                ThrowShuriken();
+            }
         }
     }
 
     public override void Move()
     {
-        if (rb == null || isDead || isStunned) return;
-
-        rb.linearVelocity = new Vector2(moveInputX * moveSpeed, rb.linearVelocity.y);
-
-        if (Mathf.Abs(moveInputX) > 0.05f && isGrounded)
+        if (rb == null || isDead || isStunned)
         {
-            StepClimbIfLowObstacle(moveInputX);
+            return;
         }
+        rb.linearVelocity = new Vector2(inputValue.x * moveSpeed, rb.linearVelocity.y);
     }
 
-    private void ThrowShurikenInFront()
+    private void ThrowShuriken()
     {
-        if (shurikenPrefab == null) return;
+        if (shurikenPrefab == null)
+        {
+            return;
+        }
 
         lastThrowTime = Time.time;
         isInCombat = true;
         lastCombatTime = Time.time;
 
-        Vector2 throwDir = new Vector2(facingDirection, 0f);
         Vector3 spawnPos = transform.position + new Vector3(facingDirection * 0.7f, 0.1f, 0f);
-        StartCoroutine(ShurikenProjectileRoutine(spawnPos, throwDir));
+        StartCoroutine(ShurikenProjectileRoutine(spawnPos, new Vector2(facingDirection, 0f)));
     }
 
     private IEnumerator ShurikenProjectileRoutine(Vector3 startPos, Vector2 dir)
     {
         GameObject proj = Instantiate(shurikenPrefab, startPos, Quaternion.identity);
-
         float elapsed = 0f;
-        const float maxLifetime = 2.5f;
-        int wallMask = groundLayer.value != 0 ? groundLayer.value : (1 << 6);
 
-        while (elapsed < maxLifetime && proj != null)
+        while (elapsed < 2.5f && proj != null)
         {
-            float dt = Time.deltaTime;
-            elapsed += dt;
-            proj.transform.position += (Vector3)(dir * (shurikenSpeed * dt));
-            proj.transform.Rotate(0f, 0f, -720f * Mathf.Sign(dir.x) * dt);
+            elapsed += Time.deltaTime;
+            proj.transform.position += (Vector3)(dir * shurikenSpeed * Time.deltaTime);
+            proj.transform.Rotate(0f, 0f, -720f * Mathf.Sign(dir.x) * Time.deltaTime);
 
             Collider2D[] hits = Physics2D.OverlapCircleAll(proj.transform.position, 0.28f);
-            bool hitSomething = false;
             for (int i = 0; i < hits.Length; i++)
             {
                 Collider2D hit = hits[i];
-                if (hit == null || hit.transform.IsChildOf(transform) || hit.gameObject == gameObject) continue;
+                if (hit == null || hit.gameObject == gameObject)
+                {
+                    continue;
+                }
 
                 Enemy enemy = hit.GetComponentInParent<Enemy>();
                 if (enemy != null && !enemy.isDead)
                 {
                     Attack(enemy);
-                    hitSomething = true;
-                    break;
+                    Destroy(proj);
+                    yield break;
                 }
 
-                Chest chest = hit.GetComponentInParent<Chest>();
-                if (chest != null && !chest.isOpened)
+                if (!hit.isTrigger && (((1 << hit.gameObject.layer) & groundLayer.value) != 0))
                 {
-                    chest.Interact(this);
-                    hitSomething = true;
-                    break;
+                    Destroy(proj);
+                    yield break;
                 }
-
-                if (!hit.isTrigger && (((1 << hit.gameObject.layer) & wallMask) != 0 || hit.gameObject.layer == 6))
-                {
-                    hitSomething = true;
-                    break;
-                }
-            }
-
-            if (hitSomething)
-            {
-                break;
             }
 
             yield return null;
@@ -318,11 +255,13 @@ public class Player : Character
 
     public void Attack(Enemy enemy)
     {
-        if (enemy == null || enemy.isDead) return;
+        if (enemy == null || enemy.isDead)
+        {
+            return;
+        }
 
         isInCombat = true;
         lastCombatTime = Time.time;
-
         enemy.TakeDamage(attackDamage);
 
         if (!enemy.isDead)
@@ -340,7 +279,10 @@ public class Player : Character
 
     public void AddCoins(Coin coin)
     {
-        if (coin == null) return;
+        if (coin == null)
+        {
+            return;
+        }
         coinCurrency += Mathf.Max(0, coin.coinDrop);
         UpdateCurrencyUI();
     }
@@ -373,7 +315,10 @@ public class Player : Character
 
     public void DeductLevel(int amount)
     {
-        if (amount <= 0) return;
+        if (amount <= 0)
+        {
+            return;
+        }
         level = Mathf.Max(1, level - amount);
         UpdateCurrencyUI();
     }
@@ -387,7 +332,7 @@ public class Player : Character
 
     public bool AreAllEnemiesDefeated()
     {
-        if (WaveManager.Instance != null && WaveManager.Instance.waves != null && WaveManager.Instance.waves.Count > 0)
+        if (WaveManager.Instance != null && WaveManager.Instance.waves.Count > 0)
         {
             if (WaveManager.Instance.isWaveInProgress || WaveManager.Instance.currentWaveIndex < WaveManager.Instance.waves.Count)
             {
@@ -409,7 +354,14 @@ public class Player : Character
 
     public void GrantEnemyKillReward(int expReward)
     {
-        defaultXpGain = expReward > 0 ? expReward : 25f;
+        if (expReward > 0)
+        {
+            defaultXpGain = expReward;
+        }
+        else
+        {
+            defaultXpGain = 25f;
+        }
         OnEnemyKilled();
     }
 
@@ -449,16 +401,21 @@ public class Player : Character
 
     public override void TakeDamage(float amount)
     {
-        if (isDead || amount <= 0f) return;
+        if (isDead || amount <= 0f)
+        {
+            return;
+        }
 
         isInCombat = true;
         lastCombatTime = Time.time;
-
         base.TakeDamage(amount);
 
         if (currentHealth <= 0f && isDead)
         {
-            if (respawnCoroutine != null) StopCoroutine(respawnCoroutine);
+            if (respawnCoroutine != null)
+            {
+                StopCoroutine(respawnCoroutine);
+            }
             respawnCoroutine = StartCoroutine(RespawnTimerRoutine());
         }
     }
@@ -475,58 +432,6 @@ public class Player : Character
         yield return new WaitForSeconds(Mathf.Max(0.5f, respawnTime));
         RespawnAtCheckpoint();
         respawnCoroutine = null;
-    }
-
-    private void StepClimbIfLowObstacle(float dirX)
-    {
-        if (col == null || rb == null || rb.linearVelocity.y > 0.2f) return;
-
-        Bounds b = col.bounds;
-        int mask = groundLayer.value != 0 ? groundLayer.value : (1 << 6);
-        float sign = Mathf.Sign(dirX);
-        Vector2 footOrigin = new Vector2(b.center.x, b.min.y + 0.08f);
-        Vector2 waistOrigin = new Vector2(b.center.x, b.min.y + 0.65f);
-        float dist = b.extents.x + 0.2f;
-
-        RaycastHit2D footHit = Physics2D.Raycast(footOrigin, Vector2.right * sign, dist, mask);
-        RaycastHit2D waistHit = Physics2D.Raycast(waistOrigin, Vector2.right * sign, dist, mask);
-
-        if (footHit.collider != null && !footHit.collider.isTrigger && waistHit.collider == null)
-        {
-            transform.position += new Vector3(sign * 0.06f, 0.35f, 0f);
-        }
-    }
-
-    private void SnapToInitialSpawnPoint()
-    {
-        if (WaveManager.Instance != null && WaveManager.Instance.PlayerSpawnPoint != null)
-        {
-            transform.position = WaveManager.Instance.PlayerSpawnPoint.position;
-        }
-        checkPointPos = transform.position;
-    }
-
-    private void BindCameraToPlayer()
-    {
-        CinemachineCamera vcam = FindFirstObjectByType<CinemachineCamera>();
-        if (vcam != null)
-        {
-            vcam.Follow = transform;
-        }
-    }
-
-    private void BindCurrencyUI()
-    {
-        if (coinCurrencyText == null)
-        {
-            GameObject coinObj = GameObject.Find("CoinCurrencyText");
-            if (coinObj != null) coinCurrencyText = coinObj.GetComponent<TextMeshProUGUI>();
-        }
-        if (levelCurrencyText == null)
-        {
-            GameObject levelObj = GameObject.Find("LevelCurrencyText");
-            if (levelObj != null) levelCurrencyText = levelObj.GetComponent<TextMeshProUGUI>();
-        }
     }
 
     private void UpdateCurrencyUI()

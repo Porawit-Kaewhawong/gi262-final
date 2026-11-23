@@ -1,21 +1,13 @@
 using UnityEngine;
 
-/// <summary>
-/// Root base class for all game entities (Characters and Interactables).
-/// </summary>
 public class Identity : MonoBehaviour
 {
-    [Header("Identity Info")]
     public string Name = "Entity";
     public int positionX;
     public int positionY;
 
     protected virtual void Awake()
     {
-        if (string.IsNullOrWhiteSpace(Name) || Name == "Entity")
-        {
-            Name = gameObject.name;
-        }
         SyncGridPosition();
     }
 

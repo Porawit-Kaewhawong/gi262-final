@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Stuns a Character, preventing movement and actions for its duration.
-/// </summary>
 [Serializable]
 public class StunEffect : StatusEffect
 {
@@ -22,7 +19,10 @@ public class StunEffect : StatusEffect
     public override void OnApply(Character character)
     {
         base.OnApply(character);
-        if (character == null) return;
+        if (character == null)
+        {
+            return;
+        }
         character.isStunned = true;
     }
 
@@ -38,7 +38,10 @@ public class StunEffect : StatusEffect
     public override void OnRemove(Character character)
     {
         base.OnRemove(character);
-        if (character == null) return;
+        if (character == null)
+        {
+            return;
+        }
         character.isStunned = false;
     }
 }

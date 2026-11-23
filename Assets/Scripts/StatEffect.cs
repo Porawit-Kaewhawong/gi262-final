@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Modifies a Character's stats (e.g. moveSpeed) while active and restores them on removal.
-/// </summary>
 [Serializable]
 public class StatEffect : StatusEffect
 {
@@ -26,7 +23,10 @@ public class StatEffect : StatusEffect
     public override void OnApply(Character character)
     {
         base.OnApply(character);
-        if (character == null) return;
+        if (character == null)
+        {
+            return;
+        }
 
         appliedSpeedDelta = character.moveSpeed * (speedMultiplier - 1f);
         character.moveSpeed = Mathf.Max(0.5f, character.moveSpeed + appliedSpeedDelta);
@@ -40,7 +40,10 @@ public class StatEffect : StatusEffect
     public override void OnRemove(Character character)
     {
         base.OnRemove(character);
-        if (character == null) return;
+        if (character == null)
+        {
+            return;
+        }
 
         character.moveSpeed = Mathf.Max(0.5f, character.moveSpeed - appliedSpeedDelta);
         appliedSpeedDelta = 0f;

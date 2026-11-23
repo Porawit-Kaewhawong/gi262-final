@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Base class for status effects applied to a Character.
-/// </summary>
 [Serializable]
 public class StatusEffect
 {

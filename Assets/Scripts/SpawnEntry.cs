@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Configuration entry for a single enemy type within a Wave.
-/// </summary>
 [Serializable]
 public class SpawnEntry
 {

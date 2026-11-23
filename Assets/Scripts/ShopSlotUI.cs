@@ -2,15 +2,12 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// UI slot representing a single ShopItem inside ShopUI.
-/// </summary>
 public class ShopSlotUI : MonoBehaviour
 {
-    [SerializeField] private Image icon = null;
-    [SerializeField] private TextMeshProUGUI nameText = null;
-    [SerializeField] private TextMeshProUGUI priceText = null;
-    [SerializeField] private Button buyButton = null;
+    public Image icon;
+    public TextMeshProUGUI nameText;
+    public TextMeshProUGUI priceText;
+    public Button buyButton;
 
     private ShopItem currentItem;
     private ShopUI parentShop;
@@ -19,15 +16,22 @@ public class ShopSlotUI : MonoBehaviour
     {
         currentItem = item;
         parentShop = shop;
-
-        if (item == null) return;
+        if (item == null)
+        {
+            return;
+        }
 
         if (icon != null)
         {
             icon.sprite = item.itemIcon;
-            icon.color = item.costType == CurrencyType.LEVEL
-                ? new Color(0.55f, 0.85f, 1f, 1f)
-                : new Color(1f, 0.88f, 0.25f, 1f);
+            if (item.costType == CurrencyType.LEVEL)
+            {
+                icon.color = new Color(0.55f, 0.85f, 1f, 1f);
+            }
+            else
+            {
+                icon.color = new Color(1f, 0.88f, 0.25f, 1f);
+            }
         }
 
         if (nameText != null)
@@ -37,9 +41,14 @@ public class ShopSlotUI : MonoBehaviour
 
         if (priceText != null)
         {
-            priceText.text = item.costType == CurrencyType.LEVEL
-                ? $"{item.levelCost} Level"
-                : $"{item.price} Coins";
+            if (item.costType == CurrencyType.LEVEL)
+            {
+                priceText.text = $"{item.levelCost} Level";
+            }
+            else
+            {
+                priceText.text = $"{item.price} Coins";
+            }
         }
 
         if (buyButton != null)
@@ -51,9 +60,10 @@ public class ShopSlotUI : MonoBehaviour
 
     public void OnClickBuy()
     {
-        if (parentShop == null || currentItem == null) return;
-
-        Player player = Player.Instance != null ? Player.Instance : FindFirstObjectByType<Player>();
-        parentShop.BuyItem(player, currentItem);
+        if (parentShop == null || currentItem == null)
+        {
+            return;
+        }
+        parentShop.BuyItem(Player.Instance, currentItem);
     }
 }

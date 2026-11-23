@@ -2,9 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Detailed Wave System manager that spawns waves of enemy prefabs and tracks wave completion.
-/// </summary>
 public class WaveManager : MonoBehaviour
 {
     public static WaveManager Instance { get; private set; }
@@ -15,17 +12,15 @@ public class WaveManager : MonoBehaviour
     public bool isWaveInProgress = false;
     public Transform[] spawnPoints;
 
-    [HideInInspector] [SerializeField] private Transform playerSpawnPoint = null;
-    [HideInInspector] [SerializeField] private GameObject portalPrefab = null;
-    [HideInInspector] [SerializeField] private GameObject portalSceneObject = null;
-    [HideInInspector] [SerializeField] private Transform portalSpawnPoint = null;
-    [HideInInspector] [SerializeField] private LayerMask groundLayer;
+    [Header("Stage References")]
+    public Transform playerSpawnPoint;
+    public GameObject portalPrefab;
+    public GameObject portalSceneObject;
+    public Transform portalSpawnPoint;
+    public LayerMask groundLayer;
 
     private int remainingEnemiesInWave = 0;
     private Coroutine activeWaveCoroutine;
-
-    public Transform PlayerSpawnPoint => playerSpawnPoint;
-    public int RemainingEnemies => remainingEnemiesInWave;
 
     private void Awake()
     {
@@ -35,17 +30,12 @@ public class WaveManager : MonoBehaviour
             return;
         }
         Instance = this;
-
-        if (portalSceneObject != null)
-        {
-            portalSceneObject.SetActive(false);
-        }
     }
 
     private void Start()
     {
         currentWaveIndex = 0;
-        if (waves != null && waves.Count > 0)
+        if (waves.Count > 0)
         {
             StartNextWave();
         }
@@ -61,7 +51,7 @@ public class WaveManager : MonoBehaviour
 
     public void StartNextWave()
     {
-        if (waves == null || currentWaveIndex >= waves.Count)
+        if (currentWaveIndex >= waves.Count)
         {
             isWaveInProgress = false;
             SpawnStageCompletionPortal();
@@ -77,7 +67,10 @@ public class WaveManager : MonoBehaviour
 
     public void OnEnemyDefeated()
     {
-        if (!isWaveInProgress) return;
+        if (!isWaveInProgress)
+        {
+            return;
+        }
 
         remainingEnemiesInWave = Mathf.Max(0, remainingEnemiesInWave - 1);
         if (remainingEnemiesInWave <= 0)
@@ -97,7 +90,6 @@ public class WaveManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("[WaveManager] All waves completed!");
             if (Player.Instance != null)
             {
                 Player.Instance.hasKilledMonster = Player.Instance.AreAllEnemiesDefeated();
@@ -136,21 +128,19 @@ public class WaveManager : MonoBehaviour
         }
 
         int spawnedCount = 0;
-        if (wave.spawnEntries != null)
+        for (int e = 0; e < wave.spawnEntries.Count; e++)
         {
-            for (int e = 0; e < wave.spawnEntries.Count; e++)
+            SpawnEntry entry = wave.spawnEntries[e];
+            if (entry == null || entry.amountPerWave <= 0 || entry.enemyAsset == null)
             {
-                SpawnEntry entry = wave.spawnEntries[e];
-                if (entry == null || entry.amountPerWave <= 0 || entry.enemyAsset == null) continue;
+                continue;
+            }
 
-                float interval = Mathf.Max(0.15f, entry.spawnInterval);
-                for (int i = 0; i < entry.amountPerWave; i++)
-                {
-                    Vector3 spawnPos = ChooseSpawnPosition(spawnedCount);
-                    Instantiate(entry.enemyAsset, spawnPos, Quaternion.identity);
-                    spawnedCount++;
-                    yield return new WaitForSeconds(interval);
-                }
+            for (int i = 0; i < entry.amountPerWave; i++)
+            {
+                Instantiate(entry.enemyAsset, ChooseSpawnPosition(spawnedCount), Quaternion.identity);
+                spawnedCount++;
+                yield return new WaitForSeconds(Mathf.Max(0.15f, entry.spawnInterval));
             }
         }
 
@@ -163,46 +153,26 @@ public class WaveManager : MonoBehaviour
 
     private Vector3 ChooseSpawnPosition(int index)
     {
-        Player player = Player.Instance != null ? Player.Instance : FindFirstObjectByType<Player>();
-        Vector2 origin = player != null
-            ? (Vector2)player.transform.position
-            : (playerSpawnPoint != null ? (Vector2)playerSpawnPoint.position : Vector2.zero);
-
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
             Transform pt = spawnPoints[index % spawnPoints.Length];
             if (pt != null)
             {
-                return FindGroundBelow(pt.position, origin);
+                return pt.position;
             }
         }
 
-        float dir = (index % 2 == 0) ? 1f : -1f;
-        float dist = Random.Range(4.5f, 8.5f);
-        Vector2 candidate = origin + new Vector2(dir * dist, 2.5f);
-        return FindGroundBelow(candidate, origin);
-    }
-
-    private Vector3 FindGroundBelow(Vector2 candidate, Vector2 fallbackOrigin)
-    {
-        int mask = groundLayer.value != 0 ? groundLayer.value : (1 << 6) | 1;
-        for (int attempt = 0; attempt < 6; attempt++)
+        if (Player.Instance != null)
         {
-            float offsetX = attempt == 0 ? 0f : ((attempt % 2 == 0 ? 1f : -1f) * attempt * 1.5f);
-            Vector2 rayStart = new Vector2(candidate.x + offsetX, fallbackOrigin.y + 4f);
-            if (Physics2D.OverlapPoint(rayStart, mask) != null)
+            float dir = -1f;
+            if (index % 2 == 0)
             {
-                rayStart.y = fallbackOrigin.y + 1.5f;
+                dir = 1f;
             }
-
-            RaycastHit2D hit = Physics2D.Raycast(rayStart, Vector2.down, 16f, mask);
-            if (hit.collider != null && hit.normal.y > 0.6f)
-            {
-                return new Vector3(hit.point.x, hit.point.y + 0.6f, 0f);
-            }
+            return Player.Instance.transform.position + new Vector3(dir * Random.Range(4.5f, 8.5f), 1f, 0f);
         }
 
-        return new Vector3(fallbackOrigin.x + 4f, fallbackOrigin.y + 0.5f, 0f);
+        return Vector3.zero;
     }
 
     private void SpawnStageCompletionPortal()
@@ -217,7 +187,7 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
-        Portal existingPortal = FindFirstObjectByType<Portal>();
+        Portal existingPortal = FindFirstObjectByType<Portal>(FindObjectsInactive.Include);
         if (existingPortal != null)
         {
             existingPortal.gameObject.SetActive(true);
@@ -226,9 +196,15 @@ public class WaveManager : MonoBehaviour
 
         if (portalPrefab != null)
         {
-            Vector3 pos = portalSpawnPoint != null
-                ? portalSpawnPoint.position
-                : (Player.Instance != null ? Player.Instance.transform.position + Vector3.right * 3.5f : Vector3.zero);
+            Vector3 pos = Vector3.zero;
+            if (portalSpawnPoint != null)
+            {
+                pos = portalSpawnPoint.position;
+            }
+            else if (Player.Instance != null)
+            {
+                pos = Player.Instance.transform.position + Vector3.right * 3.5f;
+            }
             Instantiate(portalPrefab, pos, Quaternion.identity);
         }
     }

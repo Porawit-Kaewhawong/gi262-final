@@ -158,6 +158,7 @@ MonoBehaviour:
   isInteractable: 1
   isOneTimeUse: 1
   interactRange: 1.2
+  autoInteract: 1
   coinDrop: 10
 --- !u!1 &1000000000000006
 GameObject:

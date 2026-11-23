@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Enemy entity that moves toward the Player, attacks on contact/range, takes damage, drops items, and grants XP on death.
-/// Inherits from Character.
-/// </summary>
 public class Enemy : Character
 {
     [Header("Enemy Rewards & Drops")]
@@ -11,52 +7,21 @@ public class Enemy : Character
     public int expReward = 25;
 
     [Header("Enemy Combat & AI")]
-    [SerializeField] private float contactDamage = 15f;
-    [SerializeField] private float attackRange = 1.15f;
-    [SerializeField] private float attackCooldown = 1.0f;
-    [SerializeField] private float jumpForce = 9.5f;
-    [SerializeField] private LayerMask groundLayer;
+    public float contactDamage = 15f;
+    public float attackRange = 1.15f;
+    public float attackCooldown = 1.0f;
+    public float jumpForce = 9.5f;
+    public LayerMask groundLayer;
 
     private float lastAttackTime = -10f;
     private float nextJumpTime = 0f;
 
-    protected override void Awake()
-    {
-        if (string.IsNullOrWhiteSpace(Name) || Name == "Entity")
-        {
-            Name = gameObject.name.Replace("(Clone)", "").Trim();
-        }
-
-        if (Name.Contains("Samurai") || Name.Contains("Boss"))
-        {
-            maxHealth = 150f;
-            expReward = 100;
-            moveSpeed = 3.2f;
-        }
-        else if (Name.Contains("Armored"))
-        {
-            maxHealth = 75f;
-            expReward = 45;
-            moveSpeed = 2.2f;
-        }
-        else
-        {
-            if (maxHealth <= 1f || maxHealth == 100f) maxHealth = 50f;
-            if (expReward <= 0) expReward = 25;
-            if (moveSpeed <= 0.1f) moveSpeed = 2.6f;
-        }
-
-        base.Awake();
-
-        if (rb != null)
-        {
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
-    }
-
     private void Update()
     {
-        if (isDead) return;
+        if (isDead)
+        {
+            return;
+        }
 
         TickStatusEffects();
         CheckGroundCollision(groundLayer);
@@ -75,8 +40,8 @@ public class Enemy : Character
         Player player = Player.Instance;
         if (player != null && !player.isDead)
         {
-            float distSq = ((Vector2)player.transform.position - (Vector2)transform.position).sqrMagnitude;
-            if (distSq <= attackRange * attackRange && Time.time >= lastAttackTime + attackCooldown)
+            float dist = Vector2.Distance(player.transform.position, transform.position);
+            if (dist <= attackRange && Time.time >= lastAttackTime + attackCooldown)
             {
                 Attack(player);
             }
@@ -85,13 +50,18 @@ public class Enemy : Character
 
     public void DropItem(int amount)
     {
-        if (DropableItems == null || DropableItems.Length == 0) return;
+        if (DropableItems == null || DropableItems.Length == 0)
+        {
+            return;
+        }
 
-        int count = Mathf.Max(1, amount);
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < Mathf.Max(1, amount); i++)
         {
             GameObject chosen = DropableItems[Random.Range(0, DropableItems.Length)];
-            if (chosen == null) continue;
+            if (chosen == null)
+            {
+                continue;
+            }
 
             Vector3 offset = new Vector3(Random.Range(-0.4f, 0.4f), 0.35f, 0f);
             Instantiate(chosen, transform.position + offset, Quaternion.identity);
@@ -100,8 +70,14 @@ public class Enemy : Character
 
     public void Attack(Player player)
     {
-        if (isDead || isStunned || player == null || player.isDead) return;
-        if (Time.time < lastAttackTime + attackCooldown) return;
+        if (isDead || isStunned || player == null || player.isDead)
+        {
+            return;
+        }
+        if (Time.time < lastAttackTime + attackCooldown)
+        {
+            return;
+        }
 
         lastAttackTime = Time.time;
         player.TakeDamage(contactDamage);
@@ -109,7 +85,10 @@ public class Enemy : Character
 
     public override void TakeDamage(float amount)
     {
-        if (isDead || amount <= 0f) return;
+        if (isDead || amount <= 0f)
+        {
+            return;
+        }
 
         base.TakeDamage(amount);
 
@@ -121,7 +100,10 @@ public class Enemy : Character
 
     public override void Move()
     {
-        if (isDead || isStunned || rb == null) return;
+        if (isDead || isStunned || rb == null)
+        {
+            return;
+        }
 
         Player player = Player.Instance;
         if (player == null || player.isDead)
@@ -130,14 +112,14 @@ public class Enemy : Character
             return;
         }
 
-        Vector2 toPlayer = (Vector2)player.transform.position - (Vector2)transform.position;
-        if (Mathf.Abs(toPlayer.x) < 0.25f)
+        float diffX = player.transform.position.x - transform.position.x;
+        if (Mathf.Abs(diffX) < 0.25f)
         {
             rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             return;
         }
 
-        float dirX = Mathf.Sign(toPlayer.x);
+        float dirX = Mathf.Sign(diffX);
         rb.linearVelocity = new Vector2(dirX * moveSpeed, rb.linearVelocity.y);
 
         if (spriteRenderer != null)
@@ -147,9 +129,8 @@ public class Enemy : Character
 
         if (isGrounded && Time.time >= nextJumpTime)
         {
-            int mask = groundLayer.value != 0 ? groundLayer.value : (1 << 6);
             Vector2 rayOrigin = (Vector2)transform.position + new Vector2(0f, 0.2f);
-            RaycastHit2D wallHit = Physics2D.Raycast(rayOrigin, Vector2.right * dirX, 0.85f, mask);
+            RaycastHit2D wallHit = Physics2D.Raycast(rayOrigin, Vector2.right * dirX, 0.85f, groundLayer);
             if (wallHit.collider != null && !wallHit.collider.isTrigger)
             {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
@@ -162,7 +143,6 @@ public class Enemy : Character
     {
         isDead = true;
         ClearAllStatusEffects();
-
         DropItem(1);
 
         if (WaveManager.Instance != null)
@@ -170,10 +150,9 @@ public class Enemy : Character
             WaveManager.Instance.OnEnemyDefeated();
         }
 
-        Player player = Player.Instance != null ? Player.Instance : FindFirstObjectByType<Player>();
-        if (player != null)
+        if (Player.Instance != null)
         {
-            player.GrantEnemyKillReward(expReward);
+            Player.Instance.GrantEnemyKillReward(expReward);
         }
 
         Destroy(gameObject);
@@ -181,7 +160,10 @@ public class Enemy : Character
 
     private void OnCollisionStay2D(Collision2D collision)
     {
-        if (isDead || collision == null) return;
+        if (isDead || collision == null)
+        {
+            return;
+        }
         Player player = collision.collider.GetComponentInParent<Player>();
         if (player != null)
         {
@@ -191,7 +173,10 @@ public class Enemy : Character
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        if (isDead || other == null) return;
+        if (isDead || other == null)
+        {
+            return;
+        }
         Player player = other.GetComponentInParent<Player>();
         if (player != null)
         {

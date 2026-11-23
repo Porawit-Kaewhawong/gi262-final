@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Checkpoint interactable that saves the Player's respawn point and restores the Player with XP/Coin penalty.
-/// Inherits from Interactable.
-/// </summary>
 public class Checkpoint : Interactable
 {
     [Header("Checkpoint Settings")]
@@ -16,10 +12,6 @@ public class Checkpoint : Interactable
 
     protected override void Awake()
     {
-        Name = "Checkpoint";
-        isInteractable = true;
-        isOneTimeUse = false;
-        if (interactRange <= 0.1f) interactRange = 2.0f;
         base.Awake();
         flagRenderer = GetComponentInChildren<SpriteRenderer>();
         UpdateVisualState();
@@ -27,7 +19,20 @@ public class Checkpoint : Interactable
 
     public override void Interact(Player player)
     {
-        if (player == null) return;
+        if (!isInteractable || player == null)
+        {
+            return;
+        }
+
+        Checkpoint[] allCheckpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
+        for (int i = 0; i < allCheckpoints.Length; i++)
+        {
+            if (allCheckpoints[i] != null && allCheckpoints[i] != this && allCheckpoints[i].isActivated)
+            {
+                allCheckpoints[i].isActivated = false;
+                allCheckpoints[i].UpdateVisualState();
+            }
+        }
 
         isActivated = true;
         player.SetCheckPoint(transform.position);
@@ -36,7 +41,11 @@ public class Checkpoint : Interactable
 
     public void OnTriggerEnter2D(Collider2D other)
     {
-        if (other == null) return;
+        if (!isInteractable || other == null)
+        {
+            return;
+        }
+
         Player player = other.GetComponentInParent<Player>();
         if (player != null && !player.isDead)
         {
@@ -46,10 +55,12 @@ public class Checkpoint : Interactable
 
     public void RestorePlayer(Player player)
     {
-        if (player == null) return;
+        if (player == null)
+        {
+            return;
+        }
 
-        float penaltyRatio = expPenaltyPercent > 1f ? (expPenaltyPercent / 100f) : Mathf.Clamp01(expPenaltyPercent);
-        float xpLoss = player.currentXP * penaltyRatio;
+        float xpLoss = player.currentXP * Mathf.Clamp01(expPenaltyPercent);
         player.ApplyPenalty(xpLoss, coinPenaltyAmount);
 
         player.transform.position = transform.position;
@@ -60,12 +71,20 @@ public class Checkpoint : Interactable
 
     private void UpdateVisualState()
     {
-        if (flagRenderer == null) flagRenderer = GetComponentInChildren<SpriteRenderer>();
+        if (flagRenderer == null)
+        {
+            flagRenderer = GetComponentInChildren<SpriteRenderer>();
+        }
         if (flagRenderer != null)
         {
-            flagRenderer.color = isActivated
-                ? new Color(0.25f, 1f, 0.45f, 1f)
-                : new Color(0.85f, 0.85f, 0.9f, 1f);
+            if (isActivated)
+            {
+                flagRenderer.color = new Color(0.25f, 1f, 0.45f, 1f);
+            }
+            else
+            {
+                flagRenderer.color = new Color(0.85f, 0.85f, 0.9f, 1f);
+            }
         }
     }
 }

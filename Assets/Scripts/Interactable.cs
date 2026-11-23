@@ -1,22 +1,37 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Base class for all interactable objects in the world.
-/// Inherits from Identity.
-/// </summary>
 public class Interactable : Identity
 {
+    private static List<Interactable> allInteractables = new List<Interactable>();
+    private static int lastInteractFrame = -1;
+
     [Header("Interactable Settings")]
     public bool isInteractable = true;
     public bool isOneTimeUse = true;
     public float interactRange = 2.0f;
+    public bool autoInteract = false;
 
-    protected virtual bool AutoInteractInRange => false;
+    protected virtual void OnEnable()
+    {
+        if (!allInteractables.Contains(this))
+        {
+            allInteractables.Add(this);
+        }
+    }
+
+    protected virtual void OnDisable()
+    {
+        allInteractables.Remove(this);
+    }
 
     public virtual void Interact(Player player)
     {
-        if (!isInteractable || player == null) return;
+        if (!isInteractable || player == null)
+        {
+            return;
+        }
 
         if (isOneTimeUse)
         {
@@ -34,31 +49,61 @@ public class Interactable : Identity
             return;
         }
 
-        float range = Mathf.Max(0.5f, interactRange);
-        float distSq = ((Vector2)player.transform.position - (Vector2)transform.position).sqrMagnitude;
-
-        if (distSq <= range * range)
+        float dist = Vector2.Distance(player.transform.position, transform.position);
+        if (dist > interactRange)
         {
-            if (AutoInteractInRange)
+            return;
+        }
+
+        if (autoInteract)
+        {
+            Interact(player);
+            return;
+        }
+
+        if (lastInteractFrame == Time.frameCount)
+        {
+            return;
+        }
+
+        bool pressed = false;
+        if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            pressed = true;
+        }
+        if (Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame)
+        {
+            pressed = true;
+        }
+
+        if (pressed && IsClosestManual(player))
+        {
+            lastInteractFrame = Time.frameCount;
+            Interact(player);
+        }
+    }
+
+    private bool IsClosestManual(Player player)
+    {
+        Interactable closest = null;
+        float bestDist = float.MaxValue;
+
+        for (int i = 0; i < allInteractables.Count; i++)
+        {
+            Interactable item = allInteractables[i];
+            if (item == null || !item.isInteractable || item.autoInteract)
             {
-                Interact(player);
-                return;
+                continue;
             }
 
-            bool interactPressed = false;
-            if (Keyboard.current != null)
+            float d = Vector2.Distance(player.transform.position, item.transform.position);
+            if (d <= item.interactRange && d < bestDist)
             {
-                interactPressed = Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.fKey.wasPressedThisFrame;
-            }
-            if (!interactPressed && Gamepad.current != null)
-            {
-                interactPressed = Gamepad.current.buttonNorth.wasPressedThisFrame;
-            }
-
-            if (interactPressed)
-            {
-                Interact(player);
+                bestDist = d;
+                closest = item;
             }
         }
+
+        return closest == this;
     }
 }

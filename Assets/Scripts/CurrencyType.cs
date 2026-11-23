@@ -1,6 +1,3 @@
-/// <summary>
-/// Currency types supported by the Shop System (Coin or Player Level).
-/// </summary>
 public enum CurrencyType
 {
     COIN = 0,

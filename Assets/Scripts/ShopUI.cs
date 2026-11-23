@@ -2,9 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Manages the Shop UI, instantiates ShopSlotUI prefabs, and processes item purchases using Coins or Levels.
-/// </summary>
 public class ShopUI : MonoBehaviour
 {
     [Header("Shop Configuration")]
@@ -12,9 +9,9 @@ public class ShopUI : MonoBehaviour
     public GameObject shopSlotPrefab;
 
     [Header("UI References")]
-    [SerializeField] private GameObject shopPanel = null;
-    [SerializeField] private Transform slotsContainer = null;
-    [SerializeField] private Button closeShopButton = null;
+    public GameObject shopPanel;
+    public Transform slotsContainer;
+    public Button closeShopButton;
 
     private readonly List<GameObject> spawnedSlots = new List<GameObject>();
 
@@ -22,13 +19,7 @@ public class ShopUI : MonoBehaviour
     {
         if (closeShopButton != null)
         {
-            closeShopButton.onClick.RemoveAllListeners();
             closeShopButton.onClick.AddListener(HideShop);
-        }
-
-        if (shopPanel != null)
-        {
-            shopPanel.SetActive(false);
         }
     }
 
@@ -43,30 +34,38 @@ public class ShopUI : MonoBehaviour
         }
         spawnedSlots.Clear();
 
-        if (shopSlotPrefab == null || slotsContainer == null) return;
+        if (shopSlotPrefab == null || slotsContainer == null)
+        {
+            return;
+        }
 
         for (int i = 0; i < shopItems.Count; i++)
         {
             ShopItem item = shopItems[i];
-            if (item == null) continue;
+            if (item == null)
+            {
+                continue;
+            }
 
             GameObject slotObj = Instantiate(shopSlotPrefab, slotsContainer);
             slotObj.SetActive(true);
 
             ShopSlotUI slotUI = slotObj.GetComponent<ShopSlotUI>();
-            if (slotUI == null)
+            if (slotUI != null)
             {
-                slotUI = slotObj.AddComponent<ShopSlotUI>();
+                slotUI.SetUp(item, this);
             }
 
-            slotUI.SetUp(item, this);
             spawnedSlots.Add(slotObj);
         }
     }
 
     public void BuyItem(Player player, ShopItem item)
     {
-        if (player == null || item == null) return;
+        if (player == null || item == null)
+        {
+            return;
+        }
 
         if (item.costType == CurrencyType.COIN)
         {
@@ -90,7 +89,7 @@ public class ShopUI : MonoBehaviour
 
     public void ShowShop()
     {
-        Player player = Player.Instance != null ? Player.Instance : FindFirstObjectByType<Player>();
+        Player player = Player.Instance;
         if (player != null)
         {
             player.hasKilledMonster = player.AreAllEnemiesDefeated();
@@ -117,7 +116,12 @@ public class ShopUI : MonoBehaviour
 
     private void ApplyPurchasedItemEffect(Player player, ShopItem item)
     {
-        string lower = (item.itemName ?? string.Empty).ToLowerInvariant();
+        string lower = "";
+        if (item.itemName != null)
+        {
+            lower = item.itemName.ToLower();
+        }
+
         if (lower.Contains("health") || lower.Contains("potion") || lower.Contains("heal"))
         {
             player.currentHealth = Mathf.Min(player.maxHealth, player.currentHealth + 50f);
